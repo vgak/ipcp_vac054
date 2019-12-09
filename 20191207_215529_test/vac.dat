@@ -1,0 +1,5 @@
+# 1: index
+# 2: time, s
+# 3: pps voltage, V
+# 4: pps current, A
+# 5: adc average value, a.u. [0-1]

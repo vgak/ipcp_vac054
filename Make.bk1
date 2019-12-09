@@ -59,18 +59,18 @@ ${OUTPATH}:
 	mkdir -p ${OUTPATH}
 
 clean:
-	$(RM) $(OBJS) $(PROJECT).elf $(PROJECT).exe $(PROJECT).bin $(PROJECT).asm
+	$(RM) $(OBJS) $(PROJECT).exe $(PROJECT).bin $(PROJECT).asm
 	rm -rf ${OUTPATH}
 
-$(PROJECT).exe: $(OBJS)
+$(PROJECT).elf: $(OBJS)
 %.o: %.c Makefile
 
-%.exe:
+%.elf:
 	$(LD) $(OBJS) $(LDFLAGS) -o $@
 	$(SIZE) -A $@
 
-%.bin: %.exe
+%.bin: %.elf
 	$(OBJCOPY) -O binary $< $@
 
-%.asm: %.exe
+%.asm: %.elf
 	$(OBJDUMP) -dwh $< > $@

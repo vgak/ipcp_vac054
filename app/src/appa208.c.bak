@@ -294,7 +294,7 @@ static int tty_config(int fd, speed_t speed)
 	serial_port_settings.c_cflag |= (CREAD | CLOCAL);
 	serial_port_settings.c_cflag |= (CS8);
 	serial_port_settings.c_cflag &= ~(CSTOPB);
-	serial_port_settings.c_cflag &= ~(PARENB | PARODD);
+	serial_port_settings.c_cflag &= ~(PARENB | PARODD | CMSPAR);
 	serial_port_settings.c_cflag &= ~(CRTSCTS);
 	// serial_port_settings.c_cflag &= ~(CNEW_RTSCTS);
 
