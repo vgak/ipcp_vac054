@@ -18,8 +18,9 @@
 // === config
 // TODO: make a config file
 
-#define LOMO_TTY "/dev/ttyUSB2"
-#define QJ3003P_TTY "/dev/ttyUSB0"
+#define LOMO_TTY "/dev/ttyUSB0"
+#define QJ3003P_TTY "/dev/ttyUSB1"
+#define APPA208_TTY "/dev/ttyUSB2"
 #define VOLTAGE_STEP 0.1
 #define ADC_PASS 1
 #define ADC_AVERAGE 2
