@@ -172,6 +172,8 @@ void *commander(void *arg)
 	return NULL;
 }
 
+#define APPA
+
 // === worker function
 
 void *worker(void *arg)
@@ -192,8 +194,13 @@ void *worker(void *arg)
 	double adc_value;
 	double adc_average;
 
+#ifdef APPA
 	int appa_fd;
-
+	appa208_disp_t disp;
+	double mult_value;
+	unit_t mult_unit;
+	int mult_overload;
+#endif
 
 	FILE  *vac_fp;
 	FILE  *adc_fp;
@@ -219,13 +226,15 @@ void *worker(void *arg)
 		goto worker_pps_close;
 	}
 
+#ifdef APPA
 	r = appa208_open(APPA208_TTY, &appa_fd);
 	if(r < 0)
 	{
 		fprintf(stderr, "# E: Unable to open appa (%d)\n", r);
 		set_run(0);
-		goto worker_appa_close;
+		goto worker_adc_close;
 	}
+#endif
 
 	// === init pps
 
@@ -276,14 +285,15 @@ void *worker(void *arg)
 
 	// === init appa
 
+#ifdef APPA
 	r = appa208_read_disp(appa_fd, &disp);
 	if(r < 0)
 	{
 		fprintf(stderr, "# E: Unable to read appa display (%d)\n", r);
 		goto worker_appa_close;
 	}
-
 	mult_unit = appa208_get_unit(&disp.mdata);
+#endif
 
 	// === create vac file
 
@@ -323,12 +333,15 @@ void *worker(void *arg)
 
 	// === write adc header
 
-	r = fprintf(adc_fp,
+		r = fprintf(adc_fp,
 		"# 1: index\n"
 		"# 2: time, s\n"
-		"# 3: adc value, a.u. [0-1]\n"
+		"# 3: adc value, a.u. [0-1]\n");
+#ifdef APPA
+		r = fprintf(adc_fp,
 		"# 4: appa value, %s\n"
 		"# 5: appa overload, bool\n", appa208_str_unit(mult_unit));
+#endif
 
 	if(r < 0)
 	{
@@ -412,7 +425,26 @@ void *worker(void *arg)
 				goto worker_while_continue;
 			}
 
-			r = fprintf(adc_fp, "%d\t%le\t%le\n", adc_index, adc_time, adc_value);
+			r = appa208_read_disp(adc_fd, &disp);
+			if(r < 0)
+			{
+				fprintf(stderr, "# E: Unable to read appa display (%d)\n", r);
+				set_run(0);
+				goto worker_while_continue;
+			}
+			mult_value = appa208_get_value(&disp.mdata);
+			mult_unit = appa208_get_unit(&disp.mdata);
+			mult_overload = appa208_get_overload(&disp.mdata);
+
+			r = fprintf(adc_fp, "%d\t%le\t%le"
+#ifdef APPA
+				"\t%le\t%d"
+#endif
+				"\n", adc_index, adc_time, adc_value
+#ifdef APPA
+				, mult_value, mult_overload
+#endif
+				);
 			if(r < 0)
 			{
 				fprintf(stderr, "# E: Unable to print to file \"%s\" (%s)\n", filename_adc, strerror(r));
@@ -542,6 +574,24 @@ void *worker(void *arg)
 		fprintf(stderr, "# E: Unable to close file \"%s\" (%s)\n", filename_vac, strerror(errno));
 	}
 
+		worker_appa_close:
+
+#ifdef APPA
+	r = appa208_close(appa_fd);
+	if(r < 0)
+	{
+		fprintf(stderr, "# E: Unable to close appa (%d)\n", r);
+	}
+#endif
+
+	worker_adc_close:
+
+	r = lomo_close(adc_fd);
+	if(r < 0)
+	{
+		fprintf(stderr, "# E: Unable to close lomo (%d)\n", r);
+	}
+
 	worker_pps_deinit:
 
 	r = qj3003p_set_voltage(pps_fd, 0);
@@ -560,14 +610,6 @@ void *worker(void *arg)
 
 	qj3003p_delay();
 
-	worker_adc_close:
-
-	r = lomo_close(adc_fd);
-	if(r < 0)
-	{
-		fprintf(stderr, "# E: Unable to close lomo (%d)\n", r);
-	}
-
 	worker_pps_close:
 
 	r = qj3003p_close(pps_fd);
@@ -575,10 +617,6 @@ void *worker(void *arg)
 	{
 		fprintf(stderr, "# E: Unable to close adc (%d)\n", r);
 	}
-
-	worker_appa_close:
-	r = appa208_close(appa_fd);
-		ERR(r < 0, worker_close_lomo, "# E: Unable to close appa (%d)", r);
 
 	worker_exit:
 
