@@ -14,6 +14,7 @@
 
 #include "lomo.h"
 #include "qj3003p.h"
+#include "appa208.h"
 
 // === config
 // TODO: make a config file
@@ -191,6 +192,9 @@ void *worker(void *arg)
 	double adc_value;
 	double adc_average;
 
+	int appa_fd;
+
+
 	FILE  *vac_fp;
 	FILE  *adc_fp;
 
@@ -213,6 +217,14 @@ void *worker(void *arg)
 		fprintf(stderr, "# E: Unable to open adc (%d)\n", r);
 		set_run(0);
 		goto worker_pps_close;
+	}
+
+	r = appa208_open(APPA208_TTY, &appa_fd);
+	if(r < 0)
+	{
+		fprintf(stderr, "# E: Unable to open appa (%d)\n", r);
+		set_run(0);
+		goto worker_appa_close;
 	}
 
 	// === init pps
@@ -262,6 +274,17 @@ void *worker(void *arg)
 		goto worker_pps_deinit;
 	}
 
+	// === init appa
+
+	r = appa208_read_disp(appa_fd, &disp);
+	if(r < 0)
+	{
+		fprintf(stderr, "# E: Unable to read appa display (%d)\n", r);
+		goto worker_appa_close;
+	}
+
+	mult_unit = appa208_get_unit(&disp.mdata);
+
 	// === create vac file
 
 	vac_fp = fopen(filename_vac, "w+");
@@ -303,7 +326,10 @@ void *worker(void *arg)
 	r = fprintf(adc_fp,
 		"# 1: index\n"
 		"# 2: time, s\n"
-		"# 3: adc value, a.u. [0-1]\n");
+		"# 3: adc value, a.u. [0-1]\n"
+		"# 4: appa value, %s\n"
+		"# 5: appa overload, bool\n", appa208_str_unit(mult_unit));
+
 	if(r < 0)
 	{
 		fprintf(stderr, "# E: Unable to print to file \"%s\" (%s)\n", filename_adc, strerror(r));
@@ -549,6 +575,10 @@ void *worker(void *arg)
 	{
 		fprintf(stderr, "# E: Unable to close adc (%d)\n", r);
 	}
+
+	worker_appa_close:
+	r = appa208_close(appa_fd);
+		ERR(r < 0, worker_close_lomo, "# E: Unable to close appa (%d)", r);
 
 	worker_exit:
 
