@@ -19,9 +19,9 @@
 // === config
 // TODO: make a config file
 
-#define LOMO_TTY "/dev/ttyUSB0"
+#define LOMO_TTY "/dev/ttyUSB2"
 #define QJ3003P_TTY "/dev/ttyUSB1"
-#define APPA208_TTY "/dev/ttyUSB2"
+#define APPA208_TTY "/dev/ttyUSB0"
 #define VOLTAGE_STEP 0.1
 #define ADC_PASS 1
 #define ADC_AVERAGE 2
@@ -425,7 +425,8 @@ void *worker(void *arg)
 				goto worker_while_continue;
 			}
 
-			r = appa208_read_disp(adc_fd, &disp);
+#ifdef APPA
+			r = appa208_read_disp(appa_fd, &disp);
 			if(r < 0)
 			{
 				fprintf(stderr, "# E: Unable to read appa display (%d)\n", r);
@@ -435,6 +436,7 @@ void *worker(void *arg)
 			mult_value = appa208_get_value(&disp.mdata);
 			mult_unit = appa208_get_unit(&disp.mdata);
 			mult_overload = appa208_get_overload(&disp.mdata);
+#endif
 
 			r = fprintf(adc_fp, "%d\t%le\t%le"
 #ifdef APPA
@@ -574,23 +576,15 @@ void *worker(void *arg)
 		fprintf(stderr, "# E: Unable to close file \"%s\" (%s)\n", filename_vac, strerror(errno));
 	}
 
-		worker_appa_close:
-
 #ifdef APPA
+	worker_appa_close:
+
 	r = appa208_close(appa_fd);
 	if(r < 0)
 	{
 		fprintf(stderr, "# E: Unable to close appa (%d)\n", r);
 	}
 #endif
-
-	worker_adc_close:
-
-	r = lomo_close(adc_fd);
-	if(r < 0)
-	{
-		fprintf(stderr, "# E: Unable to close lomo (%d)\n", r);
-	}
 
 	worker_pps_deinit:
 
@@ -609,6 +603,14 @@ void *worker(void *arg)
 	}
 
 	qj3003p_delay();
+
+	worker_adc_close:
+
+	r = lomo_close(adc_fd);
+	if(r < 0)
+	{
+		fprintf(stderr, "# E: Unable to close lomo (%d)\n", r);
+	}
 
 	worker_pps_close:
 
