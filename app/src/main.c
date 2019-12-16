@@ -19,9 +19,9 @@
 // === config
 // TODO: make a config file
 
-#define LOMO_TTY "/dev/ttyUSB2"
+#define LOMO_TTY "/dev/ttyUSB0"
 #define QJ3003P_TTY "/dev/ttyUSB1"
-#define APPA208_TTY "/dev/ttyUSB0"
+#define APPA208_TTY "/dev/ttyUSB2"
 #define VOLTAGE_STEP 0.1
 #define ADC_PASS 1
 #define ADC_AVERAGE 2
@@ -172,7 +172,7 @@ void *commander(void *arg)
 	return NULL;
 }
 
-// #define APPA
+#define APPA
 
 // === worker function
 
@@ -426,7 +426,19 @@ void *worker(void *arg)
 			}
 
 #ifdef APPA
-			r = appa208_read_disp(appa_fd, &disp);
+			// r = appa208_read_disp(appa_fd, &disp);
+			// dirty hack
+			int j = 0;
+			do
+			{
+				r = appa208_read_disp(appa_fd, &disp);
+				if (r == 0)
+				{
+					break;
+				}
+				fprintf(stderr, "# W: appa problem (%d)\n", r);
+				j++;
+			} while (j < 3);
 			if(r < 0)
 			{
 				fprintf(stderr, "# E: Unable to read appa display (%d)\n", r);
