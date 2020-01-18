@@ -172,7 +172,7 @@ void *commander(void *arg)
 	return NULL;
 }
 
-// #define APPA
+#define APPA
 
 // === worker function
 
